@@ -1,4 +1,4 @@
-import { LogOut, ShieldQuestion } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Clock } from '@/components/Clock';

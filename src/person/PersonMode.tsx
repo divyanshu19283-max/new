@@ -1,8 +1,7 @@
-import { ArrowLeft, Heart, LogOut, Phone, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
+import { LogOut, Phone, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Clock } from '@/components/Clock';
 import { Logo } from '@/components/Logo';
 import { VoiceButton } from '@/components/VoiceButton';
 import { useCare } from '@/store/CareContext';
@@ -14,7 +13,7 @@ import { PersonSettings } from './PersonSettings';
 
 export function PersonMode() {
   const {
-    settings, reminders, acknowledgements, checkIns, requestHelp,
+    settings, reminders, acknowledgements, checkIns, checkIn, requestHelp,
     mode, setMode, activePrompt, fallCheck, online,
   } = useCare();
   const [helpScreen, setHelpScreen] = useState(false);
@@ -82,32 +81,26 @@ export function PersonMode() {
         </div>
 
         {/* check-in status / CTA */}
-        <Card padding="lg" className="mb-6 animate-slide-up" >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-            <div>
-              <h2 className="font-display text-3xl text-slatey-900 mb-1">Are you okay?</h2>
-              {todayCheckin ? (
-                <p className="text-lg text-sage-700 font-semibold">
-                  ✓ You checked in at {clockTime(todayCheckin.timestamp)}
-                </p>
-              ) : lastCheckin ? (
-                <p className="text-lg text-slatey-700">
-                  Last check-in: {clockTime(lastCheckin.timestamp)}
-                </p>
-              ) : (
-                <p className="text-lg text-slatey-700">Tap below to let your caregiver know.</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-3 sm:w-64">
-              <Button size="lg" variant="primary" fullWidth onClick={() => {
-                // trigger check-in prompt directly if none active
-                if (!activePrompt) {
-                  window.dispatchEvent(new CustomEvent('care-voice-command', { detail: { transcript: "okay" } }));
-                }
-              }}>
-                <Heart size={24} fill="currentColor" /> I'M OKAY
-              </Button>
-            </div>
+        <Card padding="lg" className="mb-6 animate-slide-up">
+          <h2 className="font-display text-3xl text-slatey-900 mb-1">Are you okay?</h2>
+          {todayCheckin ? (
+            <p className="text-lg text-sage-700 font-semibold mb-5">
+              ✓ You checked in at {clockTime(todayCheckin.timestamp)}
+            </p>
+          ) : lastCheckin ? (
+            <p className="text-lg text-slatey-700 mb-5">
+              Last check-in: {clockTime(lastCheckin.timestamp)}
+            </p>
+          ) : (
+            <p className="text-lg text-slatey-700 mb-5">Let your caregiver know how you're doing.</p>
+          )}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Button size="lg" variant="primary" fullWidth onClick={() => checkIn('ok')} disabled={!!todayCheckin}>
+              I'M OKAY
+            </Button>
+            <Button size="lg" variant="help" fullWidth onClick={() => { checkIn('help'); setHelpScreen(true); }}>
+              I NEED HELP
+            </Button>
           </div>
         </Card>
 

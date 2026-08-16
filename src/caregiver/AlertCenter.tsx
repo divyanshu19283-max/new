@@ -1,7 +1,6 @@
 import {
-  AlertTriangle, Bell, CheckCircle2, Heart, Phone, Plus, ShieldCheck, X,
+  Bell, CheckCircle2, Phone, ShieldCheck, X,
 } from 'lucide-react';
-import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { StatusDot, severityStyle } from '@/components/StatusDot';
 import { useCare } from '@/store/CareContext';
@@ -66,7 +65,7 @@ function AlertRow({ alert, phone, onAck, onSafe, onResolve }: {
   const isHelp = alert.kind === 'help_requested' || alert.kind === 'fall';
 
   return (
-    <Card padding="md" className={`${s.bg} border-l-4`} style={{ borderLeftColor: 'currentColor' } as any}>
+    <Card padding="md" className={`${s.bg} border-l-4`} style={{ borderLeftColor: alert.severity === 'help' ? '#D96B5C' : alert.severity === 'attention' ? '#C98A2B' : '#5E9270' } as any}>
       <div className="flex items-start gap-3">
         <span className="text-2xl shrink-0">{KIND_ICON[alert.kind] ?? '🔔'}</span>
         <div className="flex-1 min-w-0">
@@ -77,7 +76,7 @@ function AlertRow({ alert, phone, onAck, onSafe, onResolve }: {
           <p className="mt-1.5 text-base font-semibold text-slatey-900">{alert.message}</p>
           {isMissed && alert.meta && (
             <p className="text-sm text-slatey-700 mt-1">
-              Expected: {String(alert.meta.expected)} · Last response: yesterday {String(alert.meta.expected ?? '8:04 AM')}
+              Expected check-in: {String(alert.meta.expected)}
             </p>
           )}
           {alert.kind === 'fall' && (

@@ -1,12 +1,10 @@
 import { Check, Heart, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
 import { VoiceButton } from '@/components/VoiceButton';
 import { useCare } from '@/store/CareContext';
 import { speak } from '@/lib/voice';
-import { isVoiceAvailable } from '@/lib/voice';
-import { clockTime, formatTime, reminderIcon, todayKey } from '@/lib/time';
+import { reminderIcon } from '@/lib/time';
 import type { AcknowledgementStatus } from '@/types';
 
 // Active prompt overlay — check-in or reminder
@@ -145,4 +143,4 @@ export function OfflineBanner() {
   );
 }
 
-export { isVoiceAvailable, clockTime, formatTime, todayKey };
+export { };

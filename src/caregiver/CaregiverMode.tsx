@@ -22,7 +22,7 @@ export function CaregiverMode() {
   const [tab, setTab] = useState<Tab>('overview');
   const [showSettings, setShowSettings] = useState(false);
   const dash = useDashboard();
-  const { activity, checkIn, requestHelp, simulateFall, settings } = useCare();
+  const { activity, requestHelp, simulateFall, settings } = useCare();
   const phone = settings.caregiverPhone || settings.person.caregiverPhone;
 
   const sev = dash.overallSeverity;
