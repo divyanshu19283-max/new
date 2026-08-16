@@ -30,7 +30,7 @@ import {
   uid,
 } from '@/storage';
 import { notify } from '@/lib/notifications';
-import { speak } from '@/lib/voice';
+import { speak, stopSpeaking } from '@/lib/voice';
 import { todayKey, nowHHMM, reminderIcon, formatTime } from '@/lib/time';
 
 interface ActivePrompt {
@@ -313,7 +313,7 @@ export function CareProvider({ children }: { children: ReactNode }) {
       pushActivity(`Check-in: ${status === 'ok' ? "I'm okay" : 'help requested'}`, 'checkin_ok');
       if (status === 'ok') {
         pushAlert('checkin_ok', 'Checked in — all okay.');
-        speak('Thank you. Have a wonderful day.');
+        speak("You're all set. I've recorded your check-in.");
       } else {
         pushAlert('help_requested', 'Help requested during check-in.');
       }
@@ -350,7 +350,12 @@ export function CareProvider({ children }: { children: ReactNode }) {
         firedRef.current.delete(`${r.id}_${tkey}`);
       } else {
         pushAlert('reminder_ack', `${r.label} acknowledged.`);
-        speak('Thank you.');
+        const confirmMsg =
+          r.kind === 'medicine' ? "Okay. I've marked that medicine as taken." :
+          r.kind === 'meal' ? "Done. I've noted that you've eaten." :
+          r.kind === 'water' ? "Great. I've marked that as done." :
+          "Okay. I've marked that reminder as done.";
+        speak(confirmMsg);
       }
       dismissPrompt();
     },
@@ -361,7 +366,7 @@ export function CareProvider({ children }: { children: ReactNode }) {
     (source: 'manual' | 'voice' | 'sensor' = 'manual') => {
       pushAlert('help_requested', 'Help requested by the person.', { source });
       pushActivity('Help requested', 'help_requested');
-      speak('Help requested. Your caregiver has been notified.');
+      speak("Help requested. Your caregiver has been notified.");
       dismissPrompt();
     },
     [dismissPrompt, pushActivity, pushAlert],
@@ -372,7 +377,7 @@ export function CareProvider({ children }: { children: ReactNode }) {
     setFallCheck(fc);
     pushActivity('Possible fall detected (simulated sensor event)', 'fall');
     if (stateRef.current.settings.voiceEnabled) {
-      speak('Possible fall detected. Are you okay? Press I am okay, or I need help.');
+      speak('Possible fall detected. Are you okay?');
     }
     notify('CARE — Possible fall detected', 'Checking if the person is okay.');
   }, [pushActivity]);
@@ -383,7 +388,7 @@ export function CareProvider({ children }: { children: ReactNode }) {
       if (status === 'ok') {
         pushAlert('fall', 'Possible fall — person confirmed they are okay.', { resolved: 1 });
         pushActivity('Fall check — person is okay', 'fall');
-        speak('Glad you are okay.');
+        speak("Glad you're okay.");
       } else {
         pushAlert('fall', 'Possible fall — help requested.', { help: 1 });
         pushActivity('Fall check — help requested', 'fall');
@@ -448,9 +453,9 @@ export function CareProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => a.time.localeCompare(b.time));
     const next = upcoming[0];
     if (next) {
-      speak(`Next: ${next.label} at ${formatTime(next.time)}.`);
+      speak(`Your next reminder is ${next.label.toLowerCase()} at ${formatTime(next.time)}.`);
     } else {
-      speak('Everything is done for today. Well done.');
+      speak("Everything is done for today. Well done.");
     }
   }, []);
 
@@ -459,40 +464,97 @@ export function CareProvider({ children }: { children: ReactNode }) {
     firedRef.current.clear();
   }, []);
 
-  // voice command interpreter for the active prompt
+  // voice command interpreter — natural language understanding
   useEffect(() => {
+    const normalize = (t: string): string =>
+      t.toLowerCase().replace(/[.,!?;:]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    const matchAny = (text: string, phrases: string[]): boolean =>
+      phrases.some((p) => text === p || text.includes(p));
+
+    const OKAY_PHRASES = [
+      "i'm okay", 'i am okay', "i'm fine", 'i am fine', 'i am good',
+      "i'm good", 'okay', 'ok', 'fine', 'all good', 'feeling okay',
+      'yes i am okay', "yes i'm okay", 'im okay', 'im fine', 'im good',
+    ];
+    const HELP_PHRASES = [
+      'i need help', 'help me', 'i need assistance', 'please help',
+      'emergency', 'call my caregiver', 'call caregiver', 'need help',
+      'help', 'i need some help', 'can you help',
+    ];
+    const DONE_PHRASES = [
+      'done', 'finished', 'taken', 'i took it', "i've taken it",
+      'completed', 'yes', 'i did it', 'i have eaten', 'i ate',
+      "i've eaten", 'i drank', "i've had water", 'i had water',
+    ];
+    const LATER_PHRASES = [
+      'later', 'remind me later', 'not now', "i'll do it later",
+      'not yet', 'maybe later', 'in a bit', 'wait',
+    ];
+    const NEXT_PHRASES = [
+      "what's next", 'next reminder', 'what do i need to do',
+      "what's my next reminder", 'whats next', 'what is next',
+      'anything else', 'what else',
+    ];
+    const STOP_PHRASES = [
+      'stop', 'stop talking', 'quiet', 'cancel', 'silence',
+      'stop speaking', 'be quiet', 'shush',
+    ];
+
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ transcript: string }>).detail;
+      const text = normalize(detail.transcript);
+      if (!text) return;
+
       const p = promptRef.current;
-      const text = detail.transcript.toLowerCase().trim();
-      if (!p) {
-        if (text.includes('help') || text.includes('emergency')) requestHelp('voice');
+
+      // STOP — always handled, regardless of context
+      if (matchAny(text, STOP_PHRASES)) {
+        stopSpeaking();
         return;
       }
-      if (text.includes('help') || text.includes('need help')) {
-        if (p.kind === 'checkin') checkIn('help', 'voice');
+
+      // HELP — works in any context
+      if (matchAny(text, HELP_PHRASES)) {
+        if (p?.kind === 'checkin') checkIn('help', 'voice');
         else requestHelp('voice');
         return;
       }
-      if (text.includes('okay') || text.includes("i'm okay") || text.includes('im okay') || text.includes('fine')) {
-        if (p.kind === 'checkin') checkIn('ok', 'voice');
-        else acknowledge(p.reminderId, 'taken', 'voice');
+
+      // If there's an active prompt, handle within its context
+      if (p) {
+        if (matchAny(text, OKAY_PHRASES)) {
+          if (p.kind === 'checkin') checkIn('ok', 'voice');
+          else acknowledge(p.reminderId, 'taken', 'voice');
+          return;
+        }
+        if (matchAny(text, DONE_PHRASES)) {
+          const status: AcknowledgementStatus =
+            p.kind === 'meal' ? 'yes' :
+            p.kind === 'water' ? 'done' :
+            p.kind === 'medicine' ? 'taken' : 'done';
+          acknowledge(p.reminderId, status, 'voice');
+          return;
+        }
+        if (matchAny(text, LATER_PHRASES)) {
+          acknowledge(p.reminderId, p.kind === 'meal' ? 'not_yet' : 'later', 'voice');
+          return;
+        }
+        if (matchAny(text, NEXT_PHRASES)) {
+          speakNext();
+          return;
+        }
         return;
       }
-      if (text.includes('done') || text.includes('taken') || text.includes('yes') || text.includes('ate')) {
-        const status: AcknowledgementStatus =
-          p.kind === 'meal' ? 'yes' :
-          p.kind === 'water' ? 'done' :
-          p.kind === 'medicine' ? 'taken' : 'done';
-        acknowledge(p.reminderId, status, 'voice');
+
+      // No active prompt — handle global commands
+      if (matchAny(text, OKAY_PHRASES)) {
+        checkIn('ok', 'voice');
         return;
       }
-      if (text.includes('later') || text.includes('not yet') || text.includes('remind')) {
-        acknowledge(p.reminderId, p.kind === 'meal' ? 'not_yet' : 'later', 'voice');
-        return;
-      }
-      if (text.includes("what's next") || text.includes('next')) {
+      if (matchAny(text, NEXT_PHRASES)) {
         speakNext();
+        return;
       }
     };
     window.addEventListener('care-voice-command', handler as EventListener);

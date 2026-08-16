@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { Button } from '@/components/Button';
 import { VoiceButton } from '@/components/VoiceButton';
 import { useCare } from '@/store/CareContext';
-import { speak } from '@/lib/voice';
 import { reminderIcon } from '@/lib/time';
 import type { AcknowledgementStatus } from '@/types';
 
 // Active prompt overlay — check-in or reminder
 export function ActivePromptOverlay() {
-  const { activePrompt, checkIn, acknowledge, requestHelp, dismissPrompt, settings } = useCare();
+  const { activePrompt, checkIn, acknowledge, dismissPrompt } = useCare();
   const [done, setDone] = useState<string | null>(null);
 
   if (!activePrompt) return null;
@@ -29,9 +28,6 @@ export function ActivePromptOverlay() {
       } else {
         setDone('Thank you ❤️');
       }
-    }
-    if (settings.voiceEnabled && (value === 'ok' || ['taken', 'done', 'yes'].includes(value as string))) {
-      speak('Thank you.');
     }
   };
 
